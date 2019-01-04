@@ -1,3 +1,25 @@
 # Created by .ignore support plugin (hsz.mobi)
 net/__pycache__/
-requirements.txt
+*.iml
+.log
+*.log
+*/logs/*
+*.log.*
+.class
+*.class
+.project
+.settings
+.classpath
+.gitignore
+*.gitignore
+.DS_Store
+gradle/
+*/gradle/
+*/gradle/*
+/.settings/
+/.idea/
+*/.idea/
+*/.idea/*
+/target/
+*/target/
+*/target/*
