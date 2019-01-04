@@ -10,8 +10,6 @@ net/__pycache__/
 .project
 .settings
 .classpath
-.gitignore
-*.gitignore
 .DS_Store
 gradle/
 */gradle/
