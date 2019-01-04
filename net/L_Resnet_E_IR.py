@@ -19,22 +19,23 @@ class ElementwiseLayer(Layer):
     name : a string or None
         An optional name to attach to this layer.
     """
+
     def __init__(
-        self,
-        layer = [],
-        combine_fn = tf.minimum,
-        name ='elementwise_layer',
-        act = None,
+            self,
+            layer=[],
+            combine_fn=tf.minimum,
+            name='elementwise_layer',
+            act=None,
     ):
-        #super(ElementwiseLayer, self).__init__(name=name,act=act ,prev_layer=layer)
-        Layer.__init__(self,name=name)
+        # super(ElementwiseLayer, self).__init__(name=name,act=act ,prev_layer=layer)
+        Layer.__init__(self, name=name)
 
         if act:
             print("  [TL] ElementwiseLayer %s: size:%s fn:%s, act:%s" % (
-            self.name, layer[0].outputs.get_shape(), combine_fn.__name__, act.__name__))
+                self.name, layer[0].outputs.get_shape(), combine_fn.__name__, act.__name__))
         else:
             print("  [TL] ElementwiseLayer %s: size:%s fn:%s" % (
-            self.name, layer[0].outputs.get_shape(), combine_fn.__name__))
+                self.name, layer[0].outputs.get_shape(), combine_fn.__name__))
 
         self.outputs = layer[0].outputs
         # print(self.outputs._shape, type(self.outputs._shape))
@@ -108,8 +109,8 @@ class BatchNormLayer(Layer):
             trainable=None,
             name='batchnorm_layer',
     ):
-        #super(BatchNormLayer, self).__init__(prev_layer=layer,act=act,name=name)
-        Layer.__init__(self,name=name)
+        # super(BatchNormLayer, self).__init__(prev_layer=layer,act=act,name=name)
+        Layer.__init__(self, name=name)
         self.inputs = layer.outputs
         print("  [TL] BatchNormLayer %s: decay:%f epsilon:%f act:%s is_train:%s" % (self.name, decay, epsilon, act.__name__, is_train))
         x_shape = self.inputs.get_shape()
@@ -124,7 +125,7 @@ class BatchNormLayer(Layer):
             ## 1. beta, gamma
             if tf.__version__ > '0.12.1' and beta_init == tf.zeros_initializer:
                 beta_init = beta_init()
-            beta = tf.get_variable('beta', shape=params_shape, initializer=beta_init, dtype=tf.float32, trainable=is_train)  #, restore=restore)
+            beta = tf.get_variable('beta', shape=params_shape, initializer=beta_init, dtype=tf.float32, trainable=is_train)  # , restore=restore)
 
             gamma = tf.get_variable(
                 'gamma',
@@ -132,27 +133,29 @@ class BatchNormLayer(Layer):
                 initializer=gamma_init,
                 dtype=tf.float32,
                 trainable=fix_gamma,
-            )  #restore=restore)
+            )  # restore=restore)
 
             ## 2.
             if tf.__version__ > '0.12.1':
                 moving_mean_init = tf.zeros_initializer()
             else:
                 moving_mean_init = tf.zeros_initializer
-            moving_mean = tf.get_variable('moving_mean', params_shape, initializer=moving_mean_init, dtype=tf.float32, trainable=False)  #   restore=restore)
+            moving_mean = tf.get_variable('moving_mean', params_shape, initializer=moving_mean_init, dtype=tf.float32,
+                                          trainable=False)  # restore=restore)
             moving_variance = tf.get_variable(
                 'moving_variance',
                 params_shape,
                 initializer=tf.constant_initializer(1.),
                 dtype=tf.float32,
                 trainable=False,
-            )  #   restore=restore)
+            )  # restore=restore)
 
             ## 3.
             # These ops will only be preformed when training.
             mean, variance = tf.nn.moments(self.inputs, axis)
             try:  # TF12
-                update_moving_mean = moving_averages.assign_moving_average(moving_mean, mean, decay, zero_debias=False)  # if zero_debias=True, has bias
+                update_moving_mean = moving_averages.assign_moving_average(moving_mean, mean, decay,
+                                                                           zero_debias=False)  # if zero_debias=True, has bias
                 update_moving_variance = moving_averages.assign_moving_average(
                     moving_variance, variance, decay, zero_debias=False)  # if zero_debias=True, has bias
                 # print("TF12 moving")
@@ -164,6 +167,7 @@ class BatchNormLayer(Layer):
             def mean_var_with_update():
                 with tf.control_dependencies([update_moving_mean, update_moving_variance]):
                     return tf.identity(mean), tf.identity(variance)
+
             if trainable is not None:
                 mean, var = mean_var_with_update()
                 print(mean)
@@ -200,13 +204,13 @@ def conv2d_same(inputs, num_outputs, kernel_size, strides, rate=1, w_init=None, 
     if strides == 1:
         if rate == 1:
             nets = tl.layers.Conv2d(inputs, n_filter=num_outputs, filter_size=(kernel_size, kernel_size), b_init=None,
-                                   strides=(strides, strides), W_init=w_init, act=None, padding='SAME', name=scope,
+                                    strides=(strides, strides), W_init=w_init, act=None, padding='SAME', name=scope,
                                     use_cudnn_on_gpu=True)
-            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope+'_bn/BatchNorm')
+            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope + '_bn/BatchNorm')
         else:
             nets = tl.layers.AtrousConv2dLayer(inputs, n_filter=num_outputs, filter_size=(kernel_size, kernel_size),
                                                rate=rate, act=None, W_init=w_init, padding='SAME', name=scope)
-            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope+'_bn/BatchNorm')
+            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope + '_bn/BatchNorm')
         return nets
     else:
         kernel_size_effective = kernel_size + (kernel_size - 1) * (rate - 1)
@@ -218,11 +222,11 @@ def conv2d_same(inputs, num_outputs, kernel_size, strides, rate=1, w_init=None, 
             nets = tl.layers.Conv2d(inputs, n_filter=num_outputs, filter_size=(kernel_size, kernel_size), b_init=None,
                                     strides=(strides, strides), W_init=w_init, act=None, padding='VALID', name=scope,
                                     use_cudnn_on_gpu=True)
-            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope+'_bn/BatchNorm')
+            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope + '_bn/BatchNorm')
         else:
             nets = tl.layers.AtrousConv2dLayer(inputs, n_filter=num_outputs, filter_size=(kernel_size, kernel_size), b_init=None,
-                                              rate=rate, act=None, W_init=w_init, padding='SAME', name=scope)
-            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope+'_bn/BatchNorm')
+                                               rate=rate, act=None, W_init=w_init, padding='SAME', name=scope)
+            nets = BatchNormLayer(nets, act=tf.identity, is_train=True, trainable=trainable, name=scope + '_bn/BatchNorm')
         return nets
 
 
@@ -272,7 +276,7 @@ def bottleneck_IR_SE(inputs, depth, depth_bottleneck, stride, rate=1, w_init=Non
         # squeeze
         squeeze = tl.layers.InputLayer(tf.reduce_mean(residual.outputs, axis=[1, 2]), name='squeeze_layer')
         # excitation
-        excitation1 = tl.layers.DenseLayer(squeeze, n_units=int(depth/16.0), act=tf.nn.relu,
+        excitation1 = tl.layers.DenseLayer(squeeze, n_units=int(depth / 16.0), act=tf.nn.relu,
                                            W_init=w_init, name='excitation_1')
         # excitation1 = tl.layers.PReluLayer(excitation1, name='excitation_prelu')
         excitation2 = tl.layers.DenseLayer(excitation1, n_units=depth, act=tf.nn.sigmoid,
@@ -307,7 +311,7 @@ def resnet(inputs, bottle_neck, blocks, w_init=None, trainable=None, reuse=False
         for block in blocks:
             with tf.variable_scope(block.scope):
                 for i, var in enumerate(block.args):
-                    with tf.variable_scope('unit_%d' % (i+1)):
+                    with tf.variable_scope('unit_%d' % (i + 1)):
                         net = block.unit_fn(net, depth=var['depth'], depth_bottleneck=var['depth_bottleneck'],
                                             w_init=w_init, stride=var['stride'], rate=var['rate'], scope=None,
                                             trainable=trainable)
@@ -315,7 +319,7 @@ def resnet(inputs, bottle_neck, blocks, w_init=None, trainable=None, reuse=False
         # net = tl.layers.DropoutLayer(net, keep=0.4, name='E_Dropout')
         net.outputs = tf.nn.dropout(net.outputs, keep_prob=keep_rate, name='E_Dropout')
         net_shape = net.outputs.get_shape()
-        net = tl.layers.ReshapeLayer(net, shape=[-1, net_shape[1]*net_shape[2]*net_shape[3]], name='E_Reshapelayer')
+        net = tl.layers.ReshapeLayer(net, shape=[-1, net_shape[1] * net_shape[2] * net_shape[3]], name='E_Reshapelayer')
         net = tl.layers.DenseLayer(net, n_units=512, W_init=w_init, name='E_DenseLayer')
         net = BatchNormLayer(net, act=tf.identity, is_train=True, fix_gamma=False, trainable=trainable, name='E_BN2')
         return net
@@ -335,29 +339,29 @@ class Block(collections.namedtuple('Block', ['scope', 'unit_fn', 'args'])):
 
 
 def resnetse_v1_block(scope, base_depth, num_units, stride, rate=1, unit_fn=None):
-  """Helper function for creating a resnet_v1 bottleneck block.
+    """Helper function for creating a resnet_v1 bottleneck block.
 
-  Args:
-    scope: The scope of the block.
-    base_depth: The depth of the bottleneck layer for each unit.
-    num_units: The number of units in the block.
-    stride: The stride of the block, implemented as a stride in the last unit.
-      All other units have stride=1.
+    Args:
+      scope: The scope of the block.
+      base_depth: The depth of the bottleneck layer for each unit.
+      num_units: The number of units in the block.
+      stride: The stride of the block, implemented as a stride in the last unit.
+        All other units have stride=1.
 
-  Returns:
-    A resnet_v1 bottleneck block.
-  """
-  return Block(scope, unit_fn, [{
-      'depth': base_depth,
-      'depth_bottleneck': base_depth,
-      'stride': stride,
-      'rate': rate
-  }] + [{
-      'depth': base_depth,
-      'depth_bottleneck': base_depth,
-      'stride': 1,
-      'rate': rate
-  }] * (num_units - 1))
+    Returns:
+      A resnet_v1 bottleneck block.
+    """
+    return Block(scope, unit_fn, [{
+        'depth': base_depth,
+        'depth_bottleneck': base_depth,
+        'stride': stride,
+        'rate': rate
+    }] + [{
+        'depth': base_depth,
+        'depth_bottleneck': base_depth,
+        'stride': 1,
+        'rate': rate
+    }] * (num_units - 1))
 
 
 def get_resnet(inputs, num_layers, type=None, w_init=None, trainable=None, sess=None, reuse=False, keep_rate=None):
@@ -403,16 +407,16 @@ def get_resnet(inputs, num_layers, type=None, w_init=None, trainable=None, sess=
 
 
 if __name__ == '__main__':
-        x = tf.placeholder(dtype=tf.float32, shape=[None, 112, 112, 3], name='input_place')
-        sess = tf.Session()
-        # w_init = tf.truncated_normal_initializer(mean=10, stddev=5e-2)
-        w_init = tf.contrib.layers.xavier_initializer(uniform=False)
-        # test resnetse
-        nets = get_resnet(x, 50, type='ir', w_init=w_init, sess=sess)
-        tl.layers.initialize_global_variables(sess)
+    x = tf.placeholder(dtype=tf.float32, shape=[None, 112, 112, 3], name='input_place')
+    sess = tf.Session()
+    # w_init = tf.truncated_normal_initializer(mean=10, stddev=5e-2)
+    w_init = tf.contrib.layers.xavier_initializer(uniform=False)
+    # test resnetse
+    nets = get_resnet(x, 50, type='ir', w_init=w_init, sess=sess)
+    tl.layers.initialize_global_variables(sess)
 
-        for p in tl.layers.get_variables_with_name('W_conv2d', True, True):
-            print(p.op.name)
-        print('##############'*30)
-        with sess:
-            nets.print_params()
+    for p in tl.layers.get_variables_with_name('W_conv2d', True, True):
+        print(p.op.name)
+    print('##############' * 30)
+    with sess:
+        nets.print_params()

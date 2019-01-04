@@ -1,4 +1,4 @@
-import tensorflow as tf 
+import tensorflow as tf
 import numpy as np
 from net.L_Resnet_E_IR import get_resnet
 import time
@@ -7,11 +7,11 @@ import tensorlayer as tl
 import os
 import h5py
 
-batch_size = 256 
+batch_size = 256
+
 
 def data_generate(data_path, batch_size, schulffe=False):
-    
-    fid = h5py.File(data_path,'r')
+    fid = h5py.File(data_path, 'r')
     data_len = fid['sen1'].shape[0]
     # ceil
     c = [i for i in range(int(data_len / batch_size))]
@@ -22,30 +22,28 @@ def data_generate(data_path, batch_size, schulffe=False):
     for i in c:
         y_b = np.array((fid['label'][i * batch_size:(i + 1) * batch_size]))
         x_b = np.array(
-        np.concatenate(
+            np.concatenate(
                 (
                     fid['sen1'][i * batch_size:(i + 1) * batch_size],
                     fid['sen2'][i * batch_size:(i + 1) * batch_size]
                 ),
                 axis=3)
-            )
+        )
         yield x_b, y_b, len(c)
 
-         
 
 if __name__ == '__main__':
-    #os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     global_step = tf.Variable(name='global_step', initial_value=0, trainable=False)
     inc_op = tf.assign_add(global_step, 1, name='increment_global_step')
-    images = tf.placeholder(name='img_inputs', shape=[None, 32,32, 18], dtype=tf.float32)
+    images = tf.placeholder(name='img_inputs', shape=[None, 32, 32, 18], dtype=tf.float32)
     labels = tf.placeholder(name='img_labels', shape=[None, ], dtype=tf.int64)
     trainable = tf.placeholder(name='trainable_bn', dtype=tf.bool)
     dropout_rate = tf.placeholder(name='dropout_rate', dtype=tf.float32)
 
-
     w_init_method = tf.contrib.layers.xavier_initializer(uniform=False)
 
-    net = get_resnet(images, 100, type='ir', w_init=w_init_method, trainable = trainable , keep_rate=dropout_rate)
+    net = get_resnet(images, 100, type='ir', w_init=w_init_method, trainable=trainable, keep_rate=dropout_rate)
 
     w = tf.Variable(tf.zeros([512, 17]))  # 定义w维度是:[784,10],初始值是0
     b = tf.Variable(tf.zeros([17]))  # 定义b维度是:[10],初始值是0
@@ -90,17 +88,17 @@ if __name__ == '__main__':
 
     count = 0
     for i in range(10000):
-        get_batch_train = data_generate(data_path="/data/tianchi/training.h5", batch_size= batch_size)
-        #get_batch_test = data_generate(data_path="/data/tianchi/validation.h5", batch_size= batch_size)
+        get_batch_train = data_generate(data_path="~/data/tianchi-german/training.h5", batch_size=batch_size)
+        # get_batch_test = data_generate(data_path="~/data/tianchi-german/validation.h5", batch_size= batch_size)
         print('------------start iteration')
         i_train = 0
-        while(True):
+        while (True):
             images_train, labels_train, batch_num_train = get_batch_train.__next__()
-            if(i_train==batch_num_train-1):
+            if (i_train == batch_num_train - 1):
                 print('end of training')
                 break
             labels_train = np.argmax(labels_train, axis=1)
-            feed_dict = {images: images_train, labels: labels_train, dropout_rate: 0.3, trainable:True }
+            feed_dict = {images: images_train, labels: labels_train, dropout_rate: 0.3, trainable: True}
             feed_dict.update(net.all_drop)
             start = time.time()
             _, total_loss_val, inference_loss_val, wd_loss_val, _, acc_val = \
@@ -127,20 +125,19 @@ if __name__ == '__main__':
                 pred_labels = []
                 real_labels = []
                 i_test = 0
-                get_batch_test = data_generate(data_path="/data/tianchi/validation.h5", batch_size=batch_size)
+                get_batch_test = data_generate(data_path="~/data/tianchi-german/validation.h5", batch_size=batch_size)
                 while (True):
                     images_test, labels_test, batch_num_test = get_batch_test.__next__()
-                    if(i_test == batch_num_test-1):
-                        print('testacc------------',np.sum(accuracy)/len(accuracy))
+                    if (i_test == batch_num_test - 1):
+                        print('testacc------------', np.sum(accuracy) / len(accuracy))
                         break
                     labels_test = np.argmax(labels_test, axis=1)
-                    feed_dict = {images: images_test, labels: labels_test, dropout_rate:1, trainable:None}
+                    feed_dict = {images: images_test, labels: labels_test, dropout_rate: 1, trainable: None}
                     feed_dict.update(tl.utils.dict_to_one(net.all_drop))
-                    acc_val,pred_label_ = sess.run([acc,pred_label],
-                                 feed_dict=feed_dict,
-                                 options=config_pb2.RunOptions(report_tensor_allocations_upon_oom=True))
+                    acc_val, pred_label_ = sess.run([acc, pred_label],
+                                                    feed_dict=feed_dict,
+                                                    options=config_pb2.RunOptions(report_tensor_allocations_upon_oom=True))
                     accuracy.append(acc_val)
                     pred_labels.append(pred_label_.tolist())
                     real_labels.append(labels_test.tolist())
                     i_test = i_test + 1
-                 
